@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <pwd.h>
 #include <grp.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
-#define MAX_PATH_COUNT 255
-#define MAX_PATH_LEN 255
+#define MAX_PATH_COUNT 256
+#define MAX_PATH_LEN 256
 
 char path_argv[MAX_PATH_COUNT][MAX_PATH_LEN];
 int path_argc = 0;
@@ -90,23 +91,33 @@ void format_mode(mode_t st_mode, char *mode) {
     }
 }
 
-const void *uid_to_name(uid_t uid, char *uname) {
+void uid_to_name(uid_t uid, char *uname) {
     struct passwd *pw_ptr;
-    if ((pw_ptr = getpwuid(uid)) == NULL) {
+    if ((pw_ptr = getpwuid(uid)) == NULL)
         sprintf(uname, "%d", uid);
-    } else
-        return pw_ptr->pw_name;
+    else
+        sprintf(uname, "%s", pw_ptr->pw_name);
 }
 
-const char *gid_to_name(gid_t gid, char *gname) {
+void gid_to_name(gid_t gid, char *gname) {
     struct group *grp_ptr;
-    if ((grp_ptr = getgrgid(gid)) == NULL) {
+    if ((grp_ptr = getgrgid(gid)) == NULL)
         sprintf(gname, "%d", gid);
-    } else
-        return grp_ptr->gr_name;
+    else
+        sprintf(gname, "%s", grp_ptr->gr_name);
 }
 
 void ls_file(char *file, struct stat *info) {
+    if (info == NULL) {
+        struct stat node_info;
+        if (stat(file, &node_info) == -1) {
+            fprintf(stderr, "ls: cannot access '%s'\n", file);
+            return;
+        } else {
+            info = &node_info;
+        }
+    }
+
     if (ls_i) {
         printf("%lu ", info->st_ino);
     }
@@ -124,25 +135,87 @@ void ls_file(char *file, struct stat *info) {
         memset(gname, '\0', sizeof(gname));
         gid_to_name(info->st_gid, gname);
 
-        char mtime[255];
+        char mtime[32];
+        unsigned a = mtime;
         memset(mtime, '\0', sizeof(mtime));
-        strcpy(mtime, ctime(&info->st_mtime));
+        strcpy(mtime, ctime(&info->st_mtime)); // Www Mmm dd hh:mm:ss yyyy
         mtime[strlen(mtime) - 1] = '\0'; // remove the \n added by ctime
 
         printf("%10s ", mode);
         printf("%3d ", info->st_nlink);
-        printf("%14s ", uname);
-        printf("%14s ", gname);
-        printf("%8u ", (unsigned int) info->st_size);
-        printf("%26s ", mtime); // Www Mmm dd hh:mm:ss yyyy
+        printf("%10s ", uname);
+        printf("%10s ", gname);
+        printf("%8lu ", info->st_size);
+        printf("%26s ", mtime);
     }
-    printf("%s\n", file);
+    printf("%s ", file);
+    if (ls_l) printf("\n");
 }
 
 void ls_dir(char *dir, struct stat *info) {
+    if (info == NULL) {
+        struct stat node_info;
+        if (stat(dir, &node_info) == -1) {
+            fprintf(stderr, "ls: cannot access '%s'\n", dir);
+            return;
+        } else {
+            info = &node_info;
+        }
+    }
+
     if (ls_d) {
         ls_file(dir, info);
         return;
+    }
+
+    DIR *dp;
+    struct dirent *entry;
+    if ((dp = opendir(dir)) == NULL) {
+        fprintf(stderr, "ls: cannot open '%s'\n", dir);
+    } else {
+        char child_dir[MAX_PATH_COUNT][MAX_PATH_LEN];
+        int child_dir_count = 0;
+
+        if (ls_R) {
+            printf("%s:\n", dir);
+        }
+        while ((entry = readdir(dp)) != NULL) {
+            if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) { // . and ..
+                if (ls_a) {
+                    ls_file(entry->d_name, NULL);
+                }
+                continue;
+            }
+            if (entry->d_name[0] == '.' && !ls_a) // hidden entries
+                continue;
+
+            char entry_name[MAX_PATH_LEN];
+            strcpy(entry_name, dir);
+            if (entry_name[strlen(entry_name) - 1] != '/') {
+                char *ptr = entry_name + strlen(entry_name);
+                *ptr++ = '/';
+                *ptr = '\0';
+            }
+            strcat(entry_name, entry->d_name);
+
+            struct stat entry_info;
+            if (stat(entry_name, &entry_info) == -1) {
+                fprintf(stderr, "ls: cannot access '%s'\n", entry_name);
+            } else {
+                if (S_ISDIR(entry_info.st_mode)) {
+                    strcpy(child_dir[child_dir_count++], entry_name);
+                }
+                ls_file(entry->d_name, &entry_info);
+            }
+        }
+        printf("\n\n");
+
+        if (ls_R) {
+            for (int i = 0; i < child_dir_count; i++) {
+                ls_dir(child_dir[i], NULL);
+            }
+        }
+        closedir(dp);
     }
 }
 
@@ -150,12 +223,12 @@ void ls() {
     for (int i = 0; i < path_argc; i++) {
         struct stat info;
         if (stat(path_argv[i], &info) == -1) {
-            fprintf(stderr, "ls: cannot access '%s'", path_argv[i]);
+            fprintf(stderr, "ls: cannot access '%s'\n", path_argv[i]);
         } else {
             if (S_ISDIR(info.st_mode)) {
-                char* dir = path_argv[i];
+                char *dir = path_argv[i];
                 if (dir[strlen(dir) - 1] != '/') {
-                    char* ptr = dir + strlen(dir);
+                    char *ptr = dir + strlen(dir);
                     *ptr++ = '/';
                     *ptr = '\0';
                 }
