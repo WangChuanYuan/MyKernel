@@ -108,8 +108,8 @@ void gid_to_name(gid_t gid, char *gname) {
 }
 
 void ls_file(char *file, struct stat *info) {
+    struct stat node_info;
     if (info == NULL) {
-        struct stat node_info;
         if (stat(file, &node_info) == -1) {
             fprintf(stderr, "ls: cannot access '%s'\n", file);
             return;
@@ -135,8 +135,7 @@ void ls_file(char *file, struct stat *info) {
         memset(gname, '\0', sizeof(gname));
         gid_to_name(info->st_gid, gname);
 
-        char mtime[32];
-        unsigned a = mtime;
+        char mtime[64];
         memset(mtime, '\0', sizeof(mtime));
         strcpy(mtime, ctime(&info->st_mtime)); // Www Mmm dd hh:mm:ss yyyy
         mtime[strlen(mtime) - 1] = '\0'; // remove the \n added by ctime
@@ -153,8 +152,8 @@ void ls_file(char *file, struct stat *info) {
 }
 
 void ls_dir(char *dir, struct stat *info) {
+    struct stat node_info;
     if (info == NULL) {
-        struct stat node_info;
         if (stat(dir, &node_info) == -1) {
             fprintf(stderr, "ls: cannot access '%s'\n", dir);
             return;
