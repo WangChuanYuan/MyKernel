@@ -140,12 +140,12 @@ void ls_file(char *file, struct stat *info) {
         strcpy(mtime, ctime(&info->st_mtime)); // Www Mmm dd hh:mm:ss yyyy
         mtime[strlen(mtime) - 1] = '\0'; // remove the \n added by ctime
 
-        printf("%10s ", mode);
-        printf("%3d ", info->st_nlink);
-        printf("%10s ", uname);
-        printf("%10s ", gname);
-        printf("%8lu ", info->st_size);
-        printf("%26s ", mtime);
+        printf("%10s\t ", mode);
+        printf("%3d\t ", info->st_nlink);
+        printf("%10s\t ", uname);
+        printf("%10s\t ", gname);
+        printf("%8lu\t ", info->st_size);
+        printf("%26s\t ", mtime);
     }
     printf("%s ", file);
     if (ls_l) printf("\n");
