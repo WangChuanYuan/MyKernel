@@ -46,11 +46,12 @@ int wc(char *file, counter_t *counter) {
                 counter->line_count++;
                 if (is_word_char) counter->word_count++;
                 is_word_char = 0;
-            } else if (c == ' ' || c == '\t') {
+            } else if (c == ' ' || c == '\t' || c == '\v' || c == '\f' || c == '\r') {
                 if (is_word_char) counter->word_count++;
                 is_word_char = 0;
             } else is_word_char = 1;
         }
+        if (is_word_char) counter->word_count++;
     }
     return 1;
 }

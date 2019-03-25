@@ -119,7 +119,7 @@ void ls_file(char *file, struct stat *info) {
     }
 
     if (ls_i) {
-        printf("%lu ", info->st_ino);
+        printf("%20lu\t ", info->st_ino);
     }
 
     if (ls_l) {
@@ -175,7 +175,7 @@ void ls_dir(char *dir, struct stat *info) {
         char child_dir[MAX_PATH_COUNT][MAX_PATH_LEN];
         int child_dir_count = 0;
 
-        if (ls_R) {
+        if (path_argc > 1 || ls_R) {
             printf("%s:\n", dir);
         }
         while ((entry = readdir(dp)) != NULL) {
